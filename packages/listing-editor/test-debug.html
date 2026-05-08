@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Listing Editor - Debug Test</title>
+  
+  <script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@19",
+      "react-dom": "https://esm.sh/react-dom@19",
+      "react-dom/client": "https://esm.sh/react-dom@19/client"
+    }
+  }
+  </script>
+  
+  <style>
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    #debug-panel {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #1a1a2e;
+      color: #0f0;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      padding: 10px;
+      max-height: 300px;
+      overflow-y: auto;
+      border-top: 3px solid #0f0;
+      z-index: 99999;
+    }
+    #debug-panel div { margin: 3px 0; white-space: pre-wrap; word-break: break-all; }
+    #debug-panel .error { color: #ff6b6b; }
+    #debug-panel .success { color: #51cf66; font-weight: bold; }
+    #debug-panel .highlight { color: #ffd43b; font-weight: bold; }
+    #debug-panel .section-info { background: #2d2d44; padding: 5px; margin: 5px 0; border-radius: 3px; }
+    #copy-btn {
+      position: fixed;
+      bottom: 310px;
+      right: 10px;
+      background: #0f0;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      font-size: 13px;
+      cursor: pointer;
+      border-radius: 4px;
+      z-index: 100000;
+      font-weight: bold;
+    }
+    #copy-btn:hover { background: #5f5; }
+    #status {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: #333;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      z-index: 99998;
+    }
+  </style>
+</head>
+<body>
+  <div id="status">Loading...</div>
+  <button id="copy-btn" onclick="copyDebug()">📋 COPY DEBUG LOG</button>
+  <div id="debug-panel">
+    <div class="highlight">=== LISTING EDITOR DEBUG MODE ===</div>
+    <div>Instructions:</div>
+    <div>1. Wait for component to load (check status top-right)</div>
+    <div>2. Select a section (e.g., "Hero")</div>
+    <div>3. Click "Config" tab</div>
+    <div>4. Click "Style" sub-tab</div>
+    <div>5. Click a background color (e.g., "Purple")</div>
+    <div>6. Click "📋 COPY DEBUG LOG" button</div>
+    <div>7. Paste the copied text to the developer</div>
+    <div class="highlight">===================================</div>
+  </div>
+  
+  <listing-editor
+    property-id="demo"
+    api-url="demo"
+    anon-key="demo"
+  ></listing-editor>
+  
+<script type="module">
+    // Use Vite dev server - no build needed, handles process.env automatically
+    fetch('/src/main.tsx')
+      .then(() => {
+        // Vite will serve the app, so just wait for it
+        setStatus('Loading...', '#333');
+        log('Using Vite dev server...');
+      })
+      .catch(err => {
+        setStatus('Vite not running', '#a00');
+        log('ERROR: Vite dev server not responding. Error: ' + err.message, 'error');
+      });
+  </script>
+  
+  <!-- Alternative: Use built files with full shim -->
+  <script type="module">
+    // FULL SHIM for all Node globals
+    window.process = { env: {} };
+    window.global = window;
+    window.Buffer = window.Buffer || { isBuffer: () => false };
+  </script>
+      .then(() => {
+        setStatus('Component loaded!', '#0a0');
+        window.debugData.componentLoaded = true;
+        log('Component successfully loaded', 'success');
+        
+        // Monitor for store updates
+        setInterval(() => {
+          if (window.debugInfo) {
+            // Check for new update calls
+            if (window.debugInfo.updateSectionCalls?.length > window.debugData.updateCalls.length) {
+              const newCalls = window.debugInfo.updateSectionCalls.slice(window.debugData.updateCalls.length);
+              window.debugData.updateCalls.push(...newCalls);
+              log(`\n📦 UPDATE SECTION CALLS: ${newCalls.length}`, 'highlight');
+              newCalls.forEach(call => {
+                log(`  Section: ${call.sectionId}`);
+                log(`  Updates: ${JSON.stringify(call.updates)}`, 'section-info');
+              });
+            }
+            
+            // Check for updated styles
+            if (window.debugInfo.lastUpdatedStyle) {
+              window.debugData.lastAppliedStyle = window.debugInfo.lastUpdatedStyle;
+              log(`\n✅ LAST UPDATED STYLE: ${JSON.stringify(window.debugInfo.lastUpdatedStyle)}`, 'success');
+            }
+            
+            // Get current section styles from renderer
+            Object.keys(window.debugInfo.sectionStyles || {}).forEach(id => {
+              const style = window.debugInfo.sectionStyles[id];
+              if (style && (!window.debugData.sectionStyles[id] || style.time !== window.debugData.sectionStyles[id].time)) {
+                window.debugData.sectionStyles[id] = style;
+                log(`\n🎨 SECTION ${id} STYLE:`, 'section-info');
+                log(`  Raw: ${JSON.stringify(style.raw)}`);
+                log(`  Applied: backgroundColor="${style.applied.backgroundColor}", backgroundImage="${style.applied.backgroundImage}"`);
+              }
+            });
+          }
+        }, 500);
+        
+        log('Debug monitor started. Make changes to see logs.');
+      })
+      .catch(err => {
+        setStatus('Load failed: ' + err.message, '#a00');
+        log('Failed to load component: ' + err.message, 'error');
+      });
+  </script>
+</body>
+</html>

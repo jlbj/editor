@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Listing Editor - Debug Test</title>
+  <style>
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    #debug-output {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #1a1a2e;
+      color: #0f0;
+      font-family: monospace;
+      font-size: 11px;
+      padding: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+      border-top: 2px solid #0f0;
+      z-index: 9999;
+    }
+    #debug-output div { margin: 2px 0; }
+    #debug-output .error { color: #f55; }
+    #debug-output .success { color: #5f5; }
+    #debug-output .info { color: #55f; }
+  </style>
+</head>
+<body>
+  <div id="debug-output"><div>Debug console ready...</div></div>
+  
+  <listing-editor
+    property-id="demo"
+    api-url="demo"
+    anon-key="demo"
+  ></listing-editor>
+  
+  <script type="module">
+    // Debug logger
+    const debug = (msg, type = 'info') => {
+      const el = document.getElementById('debug-output');
+      const line = document.createElement('div');
+      line.className = type;
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      el.appendChild(line);
+      el.scrollTop = el.scrollHeight;
+      console.log(msg);
+    };
+
+    // Override console methods
+    const origLog = console.log;
+    const origError = console.error;
+    const origWarn = console.warn;
+    
+    console.log = (...args) => {
+      origLog(...args);
+      debug(args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' '));
+    };
+    
+    console.error = (...args) => {
+      origError(...args);
+      debug(args.join(' '), 'error');
+    };
+    
+    console.warn = (...args) => {
+      origWarn(...args);
+      debug(args.join(' '), 'warn');
+    };
+
+    debug('=== DEBUG MODE ENABLED ===');
+    debug('1. Select a section in the sidebar');
+    debug('2. Click Config tab');
+    debug('3. Click Style sub-tab');
+    debug('4. Click a background color');
+    debug('5. Check logs below for style values');
+    debug('===========================');
+
+    // Store debug info globally
+    window.debugInfo = {
+      sectionStyle: null,
+      updateSectionCalls: [],
+      appliedStyles: []
+    };
+  </script>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

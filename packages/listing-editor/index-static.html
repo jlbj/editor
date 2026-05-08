@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Listing Editor</title>
+  <link rel="stylesheet" href="./dist/listing-editor.css">
+  <script src="https://unpkg.com/react@19/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@19/umd/react-dom.production.min.js" crossorigin></script>
+  <script>
+    // Polyfills for browser
+    window.process = { env: {} };
+    window.global = window;
+    window.Buffer = window.Buffer || { isBuffer: () => false };
+  </script>
+</head>
+<body>
+  <listing-editor
+    property-id="demo"
+    api-url="demo"
+    anon-key="demo"
+  ></listing-editor>
+  <script src="./dist/listing-editor.umd.cjs"></script>
+</body>
+</html>

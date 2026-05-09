@@ -25,6 +25,7 @@ export interface SectionContent {
 export interface SectionStyle {
   textAlign?: 'left' | 'center' | 'right';
   fontSize?: string;
+  color?: string;
   backgroundColor?: string;
   backgroundImage?: string;
   backgroundAttachment?: 'scroll' | 'fixed' | 'parallax';

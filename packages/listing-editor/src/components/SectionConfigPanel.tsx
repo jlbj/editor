@@ -106,6 +106,7 @@ export function SectionConfigPanel() {
   const [activeTab, setActiveTab] = useState<'content' | 'style' | 'animations'>('content');
   const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>('color');
   const [customColor, setCustomColor] = useState('#000000');
+  const [textCustomColor, setTextCustomColor] = useState('#000000');
 
   const theme = getTheme();
   const section = pageConfig.sections.find((s) => s.id === selectedSectionId);
@@ -573,6 +574,69 @@ export function SectionConfigPanel() {
                   
                 </>
               )}
+            </div>
+
+            <div style={{ marginBottom: '16px', paddingTop: '8px', borderTop: '1px solid #e2e8f0' }}>
+              <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '8px' }}>Text Color</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', marginBottom: '8px' }}>
+                <button
+                  onClick={() => updateSection(section.id, { style: { ...section.style, color: undefined } })}
+                  style={{
+                    padding: '6px',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '4px',
+                    background: '#fff',
+                    fontSize: '10px',
+                    cursor: 'pointer',
+                    color: '#64748b',
+                  }}
+                >
+                  Default
+                </button>
+                {themeColors.map((tc) => (
+                  <button
+                    key={tc.id}
+                    onClick={() => {
+                      setTextCustomColor(tc.color);
+                      updateSection(section.id, { style: { ...section.style, color: tc.color } });
+                    }}
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      border: section.style.color === tc.color ? '2px solid #3b82f6' : '1px solid #e2e8f0',
+                      borderRadius: '4px',
+                      background: tc.color,
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                    title={tc.label}
+                  />
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="color"
+                  value={section.style.color || textCustomColor}
+                  onChange={(e) => {
+                    setTextCustomColor(e.target.value);
+                    updateSection(section.id, { style: { ...section.style, color: e.target.value } });
+                  }}
+                  style={{ width: '32px', height: '32px', border: '1px solid #e2e8f0', borderRadius: '4px', cursor: 'pointer', padding: 0 }}
+                />
+                <input
+                  type="text"
+                  value={section.style.color || ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/^#[0-9A-Fa-f]{0,6}$/.test(val)) {
+                      setTextCustomColor(val);
+                      updateSection(section.id, { style: { ...section.style, color: val } });
+                    }
+                  }}
+                  placeholder="Theme default"
+                  style={{ flex: 1, padding: '6px', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '12px' }}
+                />
+              </div>
             </div>
 
             <div style={{ marginBottom: '12px' }}>

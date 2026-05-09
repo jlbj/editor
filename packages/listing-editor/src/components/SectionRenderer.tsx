@@ -75,7 +75,7 @@ export function SectionRenderer({ section, style: layoutStyle, theme }: SectionR
     padding: section.style.padding || theme?.spacing.sectionPadding || '0',
     textAlign: section.style.textAlign || 'left',
     fontFamily: theme?.typography.bodyFont || 'inherit',
-    color: theme?.colors.text || 'inherit',
+    color: section.style.color || theme?.colors.text || 'inherit',
   };
 
   const animationClass = (() => {
@@ -153,17 +153,18 @@ return (
       )}
 
       <div style={{ position: 'relative', zIndex: 1 }}>
-        <SectionContent type={section.type} content={section.content} sectionInfo={sectionInfo} theme={theme} textAlign={section.style.textAlign} />
+        <SectionContent type={section.type} content={section.content} sectionInfo={sectionInfo} theme={theme} textAlign={section.style.textAlign} textColor={section.style.color} />
       </div>
     </div>
   );
 }
 
-function SectionContent({ type, content, sectionInfo, theme, textAlign }: { type: SectionType; content: Record<string, unknown>; sectionInfo: { label: string; icon: string } | undefined; theme?: Theme; textAlign?: string }) {
+function SectionContent({ type, content, sectionInfo, theme, textAlign, textColor }: { type: SectionType; content: Record<string, unknown>; sectionInfo: { label: string; icon: string } | undefined; theme?: Theme; textAlign?: string; textColor?: string }) {
   const c = content as Record<string, string | number | undefined>;
-  const primary = theme?.colors.primary || '#1a365d';
-  const text = theme?.colors.text || '#1a202c';
-  const textMuted = theme?.colors.textMuted || '#64748b';
+  const activeTextColor = textColor || theme?.colors.text || '#1a202c';
+  const primary = textColor || theme?.colors.primary || '#1a365d';
+  const text = activeTextColor;
+  const textMuted = textColor || theme?.colors.textMuted || '#64748b';
   const headingFont = theme?.typography.headingFont || 'inherit';
   const bodyFont = theme?.typography.bodyFont || 'inherit';
 

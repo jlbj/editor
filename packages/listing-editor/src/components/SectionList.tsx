@@ -22,13 +22,13 @@ import type { Section } from '../types';
 function SortableSectionItem({
   section,
   isSelected,
-  onSelect,
   onRemove,
+  onClick,
 }: {
   section: Section;
   isSelected: boolean;
-  onSelect: () => void;
   onRemove: () => void;
+  onClick: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.id,
@@ -41,6 +41,11 @@ function SortableSectionItem({
   };
 
   const sectionInfo = SECTION_TYPES.find((s) => s.type === section.type);
+
+  const onDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData('text/plain', section.id);
+    e.dataTransfer.effectAllowed = 'copy';
+  };
 
   return (
     <div
@@ -58,10 +63,11 @@ function SortableSectionItem({
         gap: '8px',
       }}
       {...attributes}
-      {...listeners}
-      onClick={onSelect}
+      onClick={onClick}
+      draggable
+      onDragStart={onDragStart}
     >
-      <span style={{ fontSize: '16px', cursor: 'grab' }}>⋮⋮</span>
+      <span style={{ fontSize: '16px', cursor: 'grab', ...listeners }} draggable={false}>⋮⋮</span>
       <span style={{ flex: 1, fontSize: '13px', fontWeight: isSelected ? 600 : 400 }}>
         {sectionInfo?.icon} {sectionInfo?.label}
       </span>
@@ -89,11 +95,27 @@ function SortableSectionItem({
 export function SectionList() {
   const pageConfig = useEditorStore((s) => s.pageConfig);
   const selectedSectionId = useEditorStore((s) => s.selectedSectionId);
+  const selectedBlockId = useEditorStore((s) => s.selectedBlockId);
   const setSelectedSection = useEditorStore((s) => s.setSelectedSection);
   const removeSection = useEditorStore((s) => s.removeSection);
   const reorderSections = useEditorStore((s) => s.reorderSections);
+  const assignSectionToBlock = useEditorStore((s) => s.assignSectionToBlock);
+  const clearBlockSelection = useEditorStore((s) => s.clearBlockSelection);
 
-  
+  const handleSectionClick = (sectionId: string) => {
+    if (selectedBlockId) {
+      if (selectedSectionId === sectionId) {
+        assignSectionToBlock(selectedBlockId, '');
+        setSelectedSection(null);
+        clearBlockSelection();
+      } else {
+        assignSectionToBlock(selectedBlockId, sectionId);
+        setSelectedSection(sectionId);
+      }
+    } else {
+      setSelectedSection(sectionId);
+    }
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -139,7 +161,7 @@ export function SectionList() {
               key={section.id}
               section={section}
               isSelected={selectedSectionId === section.id}
-              onSelect={() => setSelectedSection(section.id)}
+              onClick={() => handleSectionClick(section.id)}
               onRemove={() => removeSection(section.id)}
             />
           ))}

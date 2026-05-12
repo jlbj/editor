@@ -11,6 +11,8 @@ export function EditorSidebar() {
   const toggleSidebar = useEditorStore((s) => s.toggleSidebar);
   const addSection = useEditorStore((s) => s.addSection);
   const selectedSectionId = useEditorStore((s) => s.selectedSectionId);
+  const selectedBlockId = useEditorStore((s) => s.selectedBlockId);
+  const pageConfig = useEditorStore((s) => s.pageConfig);
 
   const [activeTab, setActiveTab] = useState<SidebarTab>('sections');
 
@@ -64,22 +66,29 @@ export function EditorSidebar() {
               </div>
 
               {activeTab === 'sections' && (
-                <select
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      addSection(e.target.value as any);
-                      e.target.value = '';
-                    }
-                  }}
-                  style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
-                >
-                  <option value="">+ Add section...</option>
-                  {SECTION_TYPES.map((st) => (
-                    <option key={st.type} value={st.type}>
-                      {st.icon} {st.label}
-                    </option>
-                  ))}
-                </select>
+                <>
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        addSection(e.target.value as any);
+                        e.target.value = '';
+                      }
+                    }}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
+                  >
+                    <option value="">+ Add section...</option>
+                    {SECTION_TYPES.map((st) => (
+                      <option key={st.type} value={st.type}>
+                        {st.icon} {st.label}
+                      </option>
+                    ))}
+                  </select>
+                  {pageConfig.layout === 'custom' && selectedBlockId && (
+                    <div style={{ marginTop: '8px', padding: '6px 8px', background: '#f0fdf4', borderRadius: '6px', border: '1px solid #bbf7d0', fontSize: '12px', color: '#166534' }}>
+                      Block selected — click a section to assign it
+                    </div>
+                  )}
+                </>
               )}
             </div>
 

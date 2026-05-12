@@ -7,11 +7,13 @@ interface SectionRendererProps {
   section: Section;
   style?: React.CSSProperties;
   theme?: Theme;
+  blockId?: string;
 }
 
-export function SectionRenderer({ section, style: layoutStyle, theme }: SectionRendererProps) {
+export function SectionRenderer({ section, style: layoutStyle, theme, blockId }: SectionRendererProps) {
   const selectedSectionId = useEditorStore((s) => s.selectedSectionId);
   const setSelectedSection = useEditorStore((s) => s.setSelectedSection);
+  const splitBlock = useEditorStore((s) => s.splitBlock);
 
   const isSelected = selectedSectionId === section.id;
   const sectionInfo = SECTION_TYPES.find((s) => s.type === section.type);
@@ -19,6 +21,13 @@ export function SectionRenderer({ section, style: layoutStyle, theme }: SectionR
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedSection(section.id);
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (blockId) {
+      splitBlock(blockId, 'vertical');
+    }
   };
 
   const bgImage = section.style?.backgroundImage;
@@ -117,9 +126,10 @@ return (
     <div
       ref={sectionRef}
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      style={sectionStyle}
+      style={{...sectionStyle, minHeight: 0, overflow: 'visible'}}
       className={`section-${section.id} ${animationClass}`}
     >
       {isParallax && (
@@ -173,24 +183,28 @@ function SectionContent({ type, content, sectionInfo, theme, textAlign, textColo
       return (
         <div
           style={{
-            minHeight: '200px',
+            minHeight: 0,
+            height: '100%',
+            overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
             alignItems: textAlign === 'left' ? 'flex-start' : textAlign === 'right' ? 'flex-end' : 'center',
             justifyContent: 'center',
-            padding: '32px',
+            padding: '12px',
+            boxSizing: 'border-box',
+            gap: '4px',
           }}
         >
-          <h1 style={{ margin: 0, fontSize: '28px', color: primary, fontFamily: headingFont }}>
+          <h1 style={{ margin: 0, fontSize: 'clamp(14px, 3vw, 24px)', color: primary, fontFamily: headingFont, lineHeight: 1.2, flexShrink: 1 }}>
             {c.title as string || 'Hero Title'}
           </h1>
           {c.subtitle && (
-            <p style={{ margin: '8px 0 0', color: textMuted }}>
+            <p style={{ margin: 0, color: textMuted, fontSize: 'clamp(11px, 2.5vw, 14px)', lineHeight: 1.3, flexShrink: 1 }}>
               {c.subtitle as string}
             </p>
           )}
           {c.ctaText && (
-            <button style={{ marginTop: '16px', padding: '10px 20px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
+            <button style={{ padding: '6px 12px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', marginTop: '4px', flexShrink: 0 }}>
               {c.ctaText as string}
             </button>
           )}

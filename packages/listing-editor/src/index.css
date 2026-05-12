@@ -198,3 +198,297 @@ body {
 .section-animate-zoom {
   animation: zoomIn 0.5s ease forwards;
 }
+
+/* Split lines - only visible on hover */
+.split-line-horizontal,
+.split-line-vertical {
+  opacity: 0;
+  transition: opacity 0s;
+}
+
+.editor-canvas-inner [class*="section-section"]:hover .split-line-horizontal,
+.editor-canvas-inner [class*="section-section"]:hover .split-line-vertical,
+.editor-canvas-inner .block-container:hover .split-line-horizontal,
+.editor-canvas-inner .block-container:hover .split-line-vertical {
+  opacity: 1;
+}
+
+/* Block container for custom layout */
+.block-container {
+  position: relative;
+  min-height: 50px;
+}
+
+/* ============================================
+   PAVING ENGINE STYLES
+   ============================================ */
+
+.paving-engine {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #ffffff;
+}
+
+/* --- Toolbar sidebar (undo/redo/merge) --- */
+.paving-toolbar-sidebar {
+  width: 48px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  background: #1e293b;
+  border-left: 1px solid #334155;
+}
+
+.paving-toolbar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.paving-toolbar-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #475569;
+  cursor: not-allowed;
+  transition: all 0.15s;
+}
+
+.paving-toolbar-btn.active {
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.paving-toolbar-btn.active:hover {
+  background: #334155;
+}
+
+.paving-toolbar-btn.merge.ready {
+  color: #3b82f6;
+  cursor: pointer;
+}
+
+.paving-toolbar-btn.merge.ready:hover {
+  background: #334155;
+}
+
+/* --- Toast --- */
+.paving-toast {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+  animation: toastIn 0.3s ease;
+  pointer-events: none;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(0.95); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+/* --- Body (canvas + sidebar) --- */
+.paving-body {
+  display: flex;
+  flex: 1;
+  gap: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* --- Canvas wrapper --- */
+.paving-canvas-wrapper {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  background: #ffffff;
+}
+
+.paving-canvas {
+  position: relative;
+  background: #ffffff;
+}
+
+/* --- Block --- */
+.paving-block {
+  position: absolute;
+  border: 1px solid #e2e8f0;
+  background: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.paving-block:hover {
+  border-color: #475569;
+}
+
+.paving-block.selected {
+  border: 2px solid #3b82f6;
+  z-index: 10;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+/* Lock button */
+.paving-lock-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 20;
+  padding: 4px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #94a3b8;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.paving-block:hover .paving-lock-btn {
+  opacity: 1;
+}
+
+.paving-lock-btn:hover {
+  background: rgba(0, 0, 0, 0.7);
+  color: #60a5fa;
+}
+
+/* Block inner */
+.paving-block-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+
+
+.paving-block-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+.paving-block-label-wrapper {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.paving-block-section-name {
+  font-size: 9px;
+  font-weight: 500;
+  color: #1e293b;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-top: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+.text-lock {
+  color: #60a5fa;
+}
+
+.text-unlock {
+  color: #94a3b8;
+}
+
+.paving-block-fill {
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.paving-block-fill[data-default="true"] {
+  background: #f1f5f9;
+}
+
+/* Hover overlay with split buttons */
+.paving-block-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  backdrop-filter: blur(2px);
+}
+
+.paving-block:hover .paving-block-overlay {
+  opacity: 1;
+}
+
+.paving-split-btn {
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  background: #334155;
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.paving-split-btn:hover {
+  background: #475569;
+  transform: scale(1.1);
+}
+
+.paving-icon-rotated {
+  transform: rotate(90deg);
+}
+
+/* Dimensions tooltip */
+.paving-block-dims {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.2);
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+

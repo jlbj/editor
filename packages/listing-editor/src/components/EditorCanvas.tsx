@@ -1,13 +1,32 @@
+import { useEffect, useRef } from 'react';
 import { useEditorStore } from '../store/useEditorStore';
 import { SectionRenderer } from './SectionRenderer';
+import { PavingCanvas } from './PavingCanvas';
 
 export function EditorCanvas() {
   const pageConfig = useEditorStore((s) => s.pageConfig);
   const getTheme = useEditorStore((s) => s.getTheme);
   const viewMode = useEditorStore((s) => s.viewMode);
+  const setContainerDimensions = useEditorStore((s) => s.setContainerDimensions);
+
+  const canvasRef = useRef<HTMLDivElement>(null);
   const theme = getTheme();
 
   const sortedSections = [...pageConfig.sections].sort((a, b) => a.order - b.order);
+  const isCustom = pageConfig.layout === 'custom';
+
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (canvasRef.current) {
+        const rect = canvasRef.current.getBoundingClientRect();
+        setContainerDimensions(rect.width, rect.height);
+      }
+    };
+
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, [setContainerDimensions]);
 
   const cssVars = theme
     ? {
@@ -66,8 +85,16 @@ export function EditorCanvas() {
     return {};
   };
 
+  if (isCustom) {
+    return (
+      <div ref={canvasRef} className={`editor-canvas view-${viewMode}`} style={cssVars as React.CSSProperties}>
+        <PavingCanvas />
+      </div>
+    );
+  }
+
   return (
-    <div className={`editor-canvas view-${viewMode}`} style={cssVars as React.CSSProperties}>
+    <div ref={canvasRef} className={`editor-canvas view-${viewMode}`} style={cssVars as React.CSSProperties}>
       <div className="editor-canvas-inner" style={getLayoutStyles() as React.CSSProperties}>
         {sortedSections.length === 0 ? (
           <div style={{ padding: '48px', textAlign: 'center', color: '#94a3b8' }}>
@@ -78,7 +105,9 @@ export function EditorCanvas() {
         ) : (
           <>
             {sortedSections.map((section, index) => 
-              <SectionRenderer key={section.id} section={section} style={getSectionStyle(section, index)} theme={theme} />
+              <div key={section.id} style={{ flex: 'none', minHeight: '100px' }}>
+                <SectionRenderer key={section.id} section={section} style={getSectionStyle(section, index)} theme={theme} />
+              </div>
             )}
             <div style={{ height: '48px', flexShrink: 0 }} />
           </>

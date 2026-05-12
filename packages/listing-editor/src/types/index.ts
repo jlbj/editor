@@ -18,6 +18,8 @@ export type SectionType =
   | 'location'
   | 'recap';
 
+export type { Block, SplitDirection, GridBlock, GridBounds, DisplayMode } from './blocks';
+
 export interface SectionContent {
   [key: string]: unknown;
 }
@@ -60,6 +62,7 @@ export interface PageConfig {
   layout: string;
   theme: string;
   sections: Section[];
+  rootBlock?: import('./blocks').Block | null;
   globalStyle: GlobalStyle;
 }
 

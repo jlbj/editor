@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { useEditorStore } from '../store/useEditorStore';
 import { THEMES, LAYOUTS } from '../lib/constants';
+import { LayoutManager } from './LayoutManager';
 
 type ViewMode = 'mobile' | 'mobile-horizontal' | 'tablet' | 'desktop';
 
@@ -19,13 +21,37 @@ export function EditorToolbar() {
   const saveConfig = useEditorStore((s) => s.saveConfig);
   const isSaving = useEditorStore((s) => s.isSaving);
   const propertyData = useEditorStore((s) => s.propertyData);
+  const getCustomLayouts = useEditorStore((s) => s.getCustomLayouts);
+  
+  const [layoutManagerOpen, setLayoutManagerOpen] = useState(false);
+  const [layoutManagerMode, setLayoutManagerMode] = useState<'save' | 'load'>('save');
+  const [savedLayouts, setSavedLayouts] = useState<any[]>([]);
+
+  // Load saved layouts on mount and when manager closes
+  useEffect(() => {
+    setSavedLayouts(getCustomLayouts());
+  }, [getCustomLayouts, layoutManagerOpen]);
+  
+  const handleLayoutChange = (newLayout: string) => {
+    setLayout(newLayout);
+  };
 
   const handleSave = async () => {
-    try {
-      await saveConfig();
-    } catch (e) {
-      console.error('Save failed:', e);
+    if (pageConfig.layout === 'custom') {
+      setLayoutManagerMode('save');
+      setLayoutManagerOpen(true);
+    } else {
+      try {
+        await saveConfig();
+      } catch (e) {
+        console.error('Save failed:', e);
+      }
     }
+  };
+
+  const openLoadManager = () => {
+    setLayoutManagerMode('load');
+    setLayoutManagerOpen(true);
   };
 
   return (
@@ -60,15 +86,58 @@ export function EditorToolbar() {
 
       <select
         value={pageConfig.layout}
-        onChange={(e) => setLayout(e.target.value)}
+        onChange={(e) => handleLayoutChange(e.target.value)}
         style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
       >
-        {LAYOUTS.map((layout) => (
+        {LAYOUTS.filter(l => l.id !== 'custom').map((layout) => (
           <option key={layout.id} value={layout.id}>
             {layout.name}
           </option>
         ))}
+        {savedLayouts.length > 0 && (
+          <optgroup label="My Layouts">
+            {savedLayouts.map((layout) => (
+              <option key={layout.id} value={layout.id}>
+                {layout.name}
+              </option>
+            ))}
+          </optgroup>
+        )}
+        <option value="custom">+ Custom (Paving Editor)</option>
       </select>
+
+      {pageConfig.layout === 'custom' && (
+        <>
+          <button
+            onClick={() => { setLayoutManagerMode('save'); setLayoutManagerOpen(true); }}
+            style={{
+              padding: '6px 12px',
+              border: '1px solid #3b82f6',
+              borderRadius: '6px',
+              background: '#eff6ff',
+              color: '#3b82f6',
+              cursor: 'pointer',
+              fontSize: '13px',
+            }}
+          >
+            Save Layout
+          </button>
+          <button
+            onClick={openLoadManager}
+            style={{
+              padding: '6px 12px',
+              border: '1px solid #e2e8f0',
+              borderRadius: '6px',
+              background: '#fff',
+              color: '#64748b',
+              cursor: 'pointer',
+              fontSize: '13px',
+            }}
+          >
+            Load Layout
+          </button>
+        </>
+      )}
 
       <select
         value={pageConfig.theme}
@@ -89,6 +158,12 @@ export function EditorToolbar() {
       >
         {isSaving ? 'Saving...' : 'Save'}
       </button>
+
+      <LayoutManager
+        isOpen={layoutManagerOpen}
+        onClose={() => setLayoutManagerOpen(false)}
+        mode={layoutManagerMode}
+      />
     </div>
   );
 }

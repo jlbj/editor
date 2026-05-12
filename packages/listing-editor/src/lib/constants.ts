@@ -378,6 +378,42 @@ export const LAYOUTS: Layout[] = [
   { id: 'two-column', name: 'Two Column', thumbnail: '', description: 'Alternating side-by-side sections' },
   { id: 'magazine', name: 'Magazine', thumbnail: '', description: 'Full-width hero with magazine-style grid' },
   { id: 'hero-first', name: 'Hero First', thumbnail: '', description: 'Large hero at top, then standard list' },
+  { id: 'custom', name: 'Custom', thumbnail: '', description: 'Drag-and-drop block layout editor' },
 ];
 
 export const generateId = () => `sec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+export const MAX_CUSTOM_LAYOUTS = 10;
+export const CUSTOM_LAYOUT_STORAGE_KEY = 'listing-editor-custom-layouts';
+export const DEFAULT_BLOCK_HEIGHT = 187;
+export const MIN_BLOCK_SIZE = 50;
+export const DEFAULT_INITIAL_SECTIONS = 4;
+export const DEFAULT_SECTION_TYPES = ['hero', 'description', 'photos', 'contact'] as const;
+
+export interface SectionLibraryItem {
+  type: SectionType;
+  label: string;
+  icon: string;
+  color: string;
+}
+
+export const SECTION_LIBRARY: SectionLibraryItem[] = [
+  { type: 'hero', label: 'Hero', icon: '🖼️', color: '#3b82f6' },
+  { type: 'photos', label: 'Photos', icon: '📸', color: '#10b981' },
+  { type: 'description', label: 'Description', icon: '📝', color: '#8b5cf6' },
+  { type: 'contact', label: 'Contact', icon: '📧', color: '#f43f5e' },
+  { type: 'price', label: 'Price', icon: '💰', color: '#f59e0b' },
+  { type: 'header', label: 'Header', icon: '🏠', color: '#06b6d4' },
+  { type: 'characteristics', label: 'Characteristics', icon: '📐', color: '#ec4899' },
+  { type: 'amenities', label: 'Amenities', icon: '✨', color: '#14b8a6' },
+  { type: 'map', label: 'Map', icon: '🗺️', color: '#6366f1' },
+  { type: 'testimonials', label: 'Testimonials', icon: '💬', color: '#a855f7' },
+  { type: 'location', label: 'Location', icon: '🌍', color: '#0ea5e9' },
+  { type: 'recap', label: 'Recap', icon: '📌', color: '#d946ef' },
+  { type: 'facilities', label: 'Facilities', icon: '🏗️', color: '#84cc16' },
+  { type: 'floorPlan', label: 'Floor Plan', icon: '📋', color: '#f97316' },
+  { type: 'rules', label: 'Rules', icon: '📜', color: '#ef4444' },
+  { type: 'closeTo', label: 'Close To', icon: '📍', color: '#22d3ee' },
+  { type: 'otherProperties', label: 'Other Properties', icon: '🔗', color: '#78716c' },
+  { type: 'bottom', label: 'Bottom', icon: '⬇️', color: '#64748b' },
+];

@@ -5,19 +5,18 @@ import './index.css';
 
 class ListingEditorElement extends HTMLElement {
   private root: ReturnType<typeof createRoot> | null = null;
+  private renderPending = false;
 
   static get observedAttributes() {
     return ['property-id', 'api-url', 'anon-key'];
   }
 
-  attributeChangedCallback(_name: string, oldValue: string, newValue: string) {
-    if (oldValue !== newValue && this.root) {
-      this.render();
-    }
+  attributeChangedCallback(_name: string, _oldValue: string, _newValue: string) {
+    this.scheduleRender();
   }
 
   connectedCallback() {
-    this.render();
+    this.scheduleRender();
   }
 
   disconnectedCallback() {
@@ -25,7 +24,16 @@ class ListingEditorElement extends HTMLElement {
     this.root = null;
   }
 
-  private render() {
+  private scheduleRender() {
+    if (this.renderPending) return;
+    this.renderPending = true;
+    Promise.resolve().then(() => {
+      this.renderPending = false;
+      this.doRender();
+    });
+  }
+
+  private doRender() {
     const propertyId = this.getAttribute('property-id');
     const apiUrl = this.getAttribute('api-url');
     const anonKey = this.getAttribute('anon-key');

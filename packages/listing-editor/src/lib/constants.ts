@@ -40,6 +40,8 @@ export const DEFAULT_SECTION_CONTENT: Record<SectionType, SectionContent> = {
   testimonials: { items: [] },
   location: { description: '', nearby: [] },
   recap: { checkIn: '', checkOut: '', minNights: 0, cancellationPolicy: '', paymentTerms: '' },
+  ADAPTIVE: { content: '' },
+  FIXED: { content: '' },
 };
 
 export const THEMES: Theme[] = [

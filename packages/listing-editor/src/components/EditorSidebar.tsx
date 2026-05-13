@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useEditorStore } from '../store/useEditorStore';
-import { SectionList } from './SectionList';
 import { SectionConfigPanel } from './SectionConfigPanel';
 import { SECTION_TYPES } from '../lib/constants';
 
@@ -13,8 +12,32 @@ export function EditorSidebar() {
   const selectedSectionId = useEditorStore((s) => s.selectedSectionId);
   const selectedBlockId = useEditorStore((s) => s.selectedBlockId);
   const pageConfig = useEditorStore((s) => s.pageConfig);
+  const setSelectedSection = useEditorStore((s) => s.setSelectedSection);
+  const assignSectionToBlock = useEditorStore((s) => s.assignSectionToBlock);
 
   const [activeTab, setActiveTab] = useState<SidebarTab>('sections');
+
+  const sortedSections = [...pageConfig.sections].sort((a, b) => a.order - b.order);
+
+  const handleSectionTypeClick = (sectionType: string) => {
+    const existingSection = sortedSections.find(s => s.type === sectionType);
+    
+    if (existingSection) {
+      if (selectedBlockId) {
+        if (selectedSectionId === existingSection.id) {
+          assignSectionToBlock(selectedBlockId, '');
+          setSelectedSection(null);
+        } else {
+          assignSectionToBlock(selectedBlockId, existingSection.id);
+          setSelectedSection(existingSection.id);
+        }
+      } else {
+        setSelectedSection(existingSection.id);
+      }
+    } else {
+      addSection(sectionType as any);
+    }
+  };
 
   return (
     <>
@@ -65,35 +88,46 @@ export function EditorSidebar() {
                 </button>
               </div>
 
-              {activeTab === 'sections' && (
-                <>
-                  <select
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        addSection(e.target.value as any);
-                        e.target.value = '';
-                      }
-                    }}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
-                  >
-                    <option value="">+ Add section...</option>
-                    {SECTION_TYPES.map((st) => (
-                      <option key={st.type} value={st.type}>
-                        {st.icon} {st.label}
-                      </option>
-                    ))}
-                  </select>
-                  {pageConfig.layout === 'custom' && selectedBlockId && (
-                    <div style={{ marginTop: '8px', padding: '6px 8px', background: '#f0fdf4', borderRadius: '6px', border: '1px solid #bbf7d0', fontSize: '12px', color: '#166534' }}>
-                      Block selected — click a section to assign it
-                    </div>
-                  )}
-                </>
+              {activeTab === 'sections' && pageConfig.layout === 'custom' && selectedBlockId && (
+                <div style={{ padding: '6px 8px', background: '#f0fdf4', borderRadius: '6px', border: '1px solid #bbf7d0', fontSize: '12px', color: '#166534' }}>
+                  Block selected — click a section to assign it
+                </div>
               )}
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto' }}>
-              {activeTab === 'sections' ? <SectionList /> : <SectionConfigPanel />}
+              {activeTab === 'sections' ? (
+                <div style={{ padding: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                    {SECTION_TYPES.map((st) => {
+                      const existingSection = sortedSections.find(s => s.type === st.type);
+                      const isSelected = existingSection ? selectedSectionId === existingSection.id : false;
+                      return (
+                        <div
+                          key={st.type}
+                          onClick={() => handleSectionTypeClick(st.type)}
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '10px 6px',
+                            border: isSelected ? '1px solid #3b82f6' : '1px solid #e2e8f0',
+                            borderRadius: '6px',
+                            background: isSelected ? '#eff6ff' : '#f8fafc',
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                            color: '#475569',
+                          }}
+                        >
+                          <span style={{ fontSize: '18px' }}>{st.icon}</span>
+                          <span style={{ fontWeight: isSelected ? 600 : 400 }}>{st.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : <SectionConfigPanel />}
             </div>
           </>
         )}

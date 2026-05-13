@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useEditorStore } from '../store/useEditorStore';
-import type { SavedLayout } from '../types/blocks';
-import { MAX_CUSTOM_LAYOUTS } from '../lib/constants';
+import type { ListingLayout } from '../services/supabase';
 
 interface LayoutManagerProps {
   isOpen: boolean;
@@ -11,38 +10,42 @@ interface LayoutManagerProps {
 
 export function LayoutManager({ isOpen, onClose, mode }: LayoutManagerProps) {
   const [layoutName, setLayoutName] = useState('');
-  const [layouts, setLayouts] = useState<SavedLayout[]>([]);
+  const [layouts, setLayouts] = useState<ListingLayout[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   
   const saveCustomLayout = useEditorStore((s) => s.saveCustomLayout);
   const loadCustomLayout = useEditorStore((s) => s.loadCustomLayout);
   const deleteCustomLayout = useEditorStore((s) => s.deleteCustomLayout);
-  const getCustomLayouts = useEditorStore((s) => s.getCustomLayouts);
+  const availableLayouts = useEditorStore((s) => s.availableLayouts);
 
   useEffect(() => {
     if (isOpen) {
-      setLayouts(getCustomLayouts());
+      setLayouts(availableLayouts.filter(l => l.type === 'custom'));
       setLayoutName('');
       setError(null);
       setDeleteConfirm(null);
+      setSaving(false);
     }
-  }, [isOpen, getCustomLayouts]);
+  }, [isOpen, availableLayouts]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!layoutName.trim()) {
       setError('Please enter a layout name');
       return;
     }
     
-    const success = saveCustomLayout(layoutName.trim());
+    setSaving(true);
+    const success = await saveCustomLayout(layoutName.trim());
+    setSaving(false);
     if (success) {
-      setLayouts(getCustomLayouts());
+      setLayouts(availableLayouts.filter(l => l.type === 'custom'));
       setLayoutName('');
       setError(null);
       onClose();
     } else {
-      setError(`Maximum ${MAX_CUSTOM_LAYOUTS} layouts reached. Delete a layout to save a new one.`);
+      setError('Failed to save layout. Check console for details.');
     }
   };
 
@@ -51,9 +54,9 @@ export function LayoutManager({ isOpen, onClose, mode }: LayoutManagerProps) {
     onClose();
   };
 
-  const handleDelete = (id: string) => {
-    deleteCustomLayout(id);
-    setLayouts(getCustomLayouts());
+  const handleDelete = async (id: string) => {
+    await deleteCustomLayout(id);
+    setLayouts(availableLayouts.filter(l => l.type === 'custom'));
     setDeleteConfirm(null);
   };
 
@@ -131,17 +134,18 @@ export function LayoutManager({ isOpen, onClose, mode }: LayoutManagerProps) {
               </button>
               <button
                 onClick={handleSave}
+                disabled={saving}
                 style={{
                   padding: '8px 16px',
                   border: 'none',
                   borderRadius: '6px',
-                  background: '#3b82f6',
+                  background: saving ? '#93c5fd' : '#3b82f6',
                   color: '#fff',
-                  cursor: 'pointer',
+                  cursor: saving ? 'not-allowed' : 'pointer',
                   fontSize: '14px',
                 }}
               >
-                Save Layout
+                {saving ? 'Saving...' : 'Save Layout'}
               </button>
             </div>
           </>
@@ -210,7 +214,7 @@ export function LayoutManager({ isOpen, onClose, mode }: LayoutManagerProps) {
                             {layout.name}
                           </div>
                           <div style={{ fontSize: '12px', color: '#94a3b8' }}>
-                            {new Date(layout.updatedAt).toLocaleDateString()}
+                            {layout.created_at ? new Date(layout.created_at).toLocaleDateString() : 'N/A'}
                           </div>
                         </div>
                         <button

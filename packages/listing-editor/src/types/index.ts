@@ -16,7 +16,9 @@ export type SectionType =
   | 'rules'
   | 'testimonials'
   | 'location'
-  | 'recap';
+  | 'recap'
+  | 'ADAPTIVE'
+  | 'FIXED';
 
 export type { Block, SplitDirection, GridBlock, GridBounds, DisplayMode } from './blocks';
 

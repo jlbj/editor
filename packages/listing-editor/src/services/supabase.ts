@@ -171,3 +171,81 @@ export async function savePropertyConfig(propertyId: string, pageConfig: unknown
     throw error;
   }
 }
+
+export interface ListingLayout {
+  id: string;
+  name: string;
+  type: 'predefined' | 'custom';
+  grid_blocks: unknown[];
+  section_assignments: Record<string, string>;
+  owner_id?: string;
+  created_at?: string;
+}
+
+export async function fetchListingLayouts(ownerId?: string): Promise<ListingLayout[]> {
+  if (useMock) {
+    return [];
+  }
+  const supabase = getSupabase();
+  const query = supabase
+    .from('listing_layouts')
+    .select('*')
+    .order('created_at', { ascending: true });
+  
+  if (ownerId) {
+    query.or(`type.eq.predefined,owner_id.eq.${ownerId}`);
+  } else {
+    query.eq('type', 'predefined');
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('Error fetching listing layouts:', error);
+    return [];
+  }
+  return (data || []) as ListingLayout[];
+}
+
+export async function saveListingLayout(layout: Omit<ListingLayout, 'created_at'>): Promise<ListingLayout | null> {
+  if (useMock) {
+    console.log('Mock save layout:', layout);
+    return layout as ListingLayout;
+  }
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('listing_layouts')
+    .upsert({
+      id: layout.id,
+      name: layout.name,
+      type: layout.type,
+      grid_blocks: layout.grid_blocks,
+      section_assignments: layout.section_assignments,
+      owner_id: layout.owner_id,
+    } as never)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error saving listing layout:', error);
+    return null;
+  }
+  return data as ListingLayout;
+}
+
+export async function deleteListingLayout(layoutId: string): Promise<boolean> {
+  if (useMock) {
+    console.log('Mock delete layout:', layoutId);
+    return true;
+  }
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from('listing_layouts')
+    .delete()
+    .eq('id', layoutId);
+
+  if (error) {
+    console.error('Error deleting listing layout:', error);
+    return false;
+  }
+  return true;
+}

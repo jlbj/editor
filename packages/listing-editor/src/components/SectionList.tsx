@@ -103,16 +103,20 @@ export function SectionList() {
   const clearBlockSelection = useEditorStore((s) => s.clearBlockSelection);
 
   const handleSectionClick = (sectionId: string) => {
+    console.log('[SectionList] Click:', { sectionId, selectedBlockId, selectedSectionId });
     if (selectedBlockId) {
       if (selectedSectionId === sectionId) {
+        console.log('[SectionList] Unassigning');
         assignSectionToBlock(selectedBlockId, '');
         setSelectedSection(null);
         clearBlockSelection();
       } else {
+        console.log('[SectionList] Assigning');
         assignSectionToBlock(selectedBlockId, sectionId);
         setSelectedSection(sectionId);
       }
     } else {
+      console.log('[SectionList] No block selected');
       setSelectedSection(sectionId);
     }
   };

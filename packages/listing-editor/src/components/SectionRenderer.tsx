@@ -11,15 +11,19 @@ interface SectionRendererProps {
 }
 
 export function SectionRenderer({ section, style: layoutStyle, theme, blockId }: SectionRendererProps) {
-  const selectedSectionId = useEditorStore((s) => s.selectedSectionId);
+  const selectedBlockId = useEditorStore((s) => s.selectedBlockId);
   const setSelectedSection = useEditorStore((s) => s.setSelectedSection);
+  const setSelectedBlock = useEditorStore((s) => s.setSelectedBlock);
   const splitBlock = useEditorStore((s) => s.splitBlock);
 
-  const isSelected = selectedSectionId === section.id;
+  const isSelectedBlock = selectedBlockId === blockId;
   const sectionInfo = SECTION_TYPES.find((s) => s.type === section.type);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (blockId) {
+      setSelectedBlock(blockId);
+    }
     setSelectedSection(section.id);
   };
 
@@ -70,7 +74,7 @@ export function SectionRenderer({ section, style: layoutStyle, theme, blockId }:
   const sectionStyle: React.CSSProperties = {
     ...layoutStyle,
     position: 'relative',
-    border: isSelected ? '2px solid #3b82f6' : '2px dashed transparent',
+    border: isSelectedBlock ? '2px solid #3b82f6' : '2px dashed transparent',
     margin: 0,
     borderRadius: 0,
     cursor: 'pointer',
@@ -144,7 +148,7 @@ return (
           }}
         />
       )}
-      {isSelected && (
+      {isSelectedBlock && (
         <div
           style={{
             position: 'absolute',

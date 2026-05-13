@@ -21,16 +21,22 @@ export function EditorToolbar() {
   const saveConfig = useEditorStore((s) => s.saveConfig);
   const isSaving = useEditorStore((s) => s.isSaving);
   const propertyData = useEditorStore((s) => s.propertyData);
-  const getCustomLayouts = useEditorStore((s) => s.getCustomLayouts);
+  const availableLayouts = useEditorStore((s) => s.availableLayouts);
+  const loadLayouts = useEditorStore((s) => s.loadLayouts);
   
   const [layoutManagerOpen, setLayoutManagerOpen] = useState(false);
   const [layoutManagerMode, setLayoutManagerMode] = useState<'save' | 'load'>('save');
-  const [savedLayouts, setSavedLayouts] = useState<any[]>([]);
+  const isLayoutEditing = useEditorStore((s) => s.isLayoutEditing);
+  const selectedCustomLayoutId = useEditorStore((s) => s.selectedCustomLayoutId);
 
-  // Load saved layouts on mount and when manager closes
+  // Compute which layout ID to show in dropdown
+  const dropdownValue = isLayoutEditing ? 'custom' : (selectedCustomLayoutId || pageConfig.layout);
+  console.log('[EditorToolbar] dropdownValue:', dropdownValue, 'isLayoutEditing:', isLayoutEditing, 'selectedCustomLayoutId:', selectedCustomLayoutId);
+
+  // Load layouts on mount
   useEffect(() => {
-    setSavedLayouts(getCustomLayouts());
-  }, [getCustomLayouts, layoutManagerOpen]);
+    loadLayouts();
+  }, []);
   
   const handleLayoutChange = (newLayout: string) => {
     setLayout(newLayout);
@@ -85,7 +91,7 @@ export function EditorToolbar() {
       </div>
 
       <select
-        value={pageConfig.layout}
+        value={dropdownValue}
         onChange={(e) => handleLayoutChange(e.target.value)}
         style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
       >
@@ -94,9 +100,9 @@ export function EditorToolbar() {
             {layout.name}
           </option>
         ))}
-        {savedLayouts.length > 0 && (
+        {availableLayouts.filter(l => l.type === 'custom').length > 0 && (
           <optgroup label="My Layouts">
-            {savedLayouts.map((layout) => (
+            {availableLayouts.filter(l => l.type === 'custom').map((layout) => (
               <option key={layout.id} value={layout.id}>
                 {layout.name}
               </option>
@@ -106,7 +112,25 @@ export function EditorToolbar() {
         <option value="custom">+ Custom (Paving Editor)</option>
       </select>
 
-      {pageConfig.layout === 'custom' && (
+      {availableLayouts.filter(l => l.type === 'custom').length > 0 && (
+        <button
+          onClick={openLoadManager}
+          title="Manage saved layouts"
+          style={{
+            padding: '6px 10px',
+            border: '1px solid #e2e8f0',
+            borderRadius: '6px',
+            background: '#fff',
+            color: '#64748b',
+            cursor: 'pointer',
+            fontSize: '13px',
+          }}
+        >
+          ⚙️
+        </button>
+      )}
+
+      {isLayoutEditing && (
         <>
           <button
             onClick={() => { setLayoutManagerMode('save'); setLayoutManagerOpen(true); }}

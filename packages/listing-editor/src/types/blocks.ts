@@ -1,3 +1,5 @@
+import type { Section } from './index';
+
 export interface GridBounds {
   top: number;
   left: number;
@@ -64,6 +66,7 @@ export interface SavedLayout {
   name: string;
   rootBlock?: Block;
   gridBlocks?: GridBlock[];
+  sections?: Section[];
   createdAt: number;
   updatedAt: number;
 }

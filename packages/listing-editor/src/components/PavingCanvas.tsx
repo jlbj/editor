@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Lock, Unlock, Scissors, Merge, Info, Undo2, Redo2 } from 'lucide-react';
 import { useEditorStore } from '../store/useEditorStore';
 import { SECTION_TYPES, SECTION_LIBRARY } from '../lib/constants';
+import type { SectionStyle, SectionType } from '../types/index';
 
 
 // --- Constants ---
@@ -14,7 +15,6 @@ const BORDER_HIT_AREA = 8;
 const EPSILON = 1;
 
 // --- Types ---
-type SectionType = 'ADAPTIVE' | 'FIXED';
 type DisplayMode = 'LOCKED' | 'UNLOCKED';
 
 const generateBlockId = () => 'blk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -26,6 +26,7 @@ interface BlockSection {
   requestedWidth: number;
   requestedHeight: number;
   displayMode: DisplayMode;
+  style?: SectionStyle;
 }
 
 interface PavingBlock {
@@ -89,6 +90,7 @@ export function PavingCanvas() {
   const setGridBlocks = useEditorStore((s) => s.setGridBlocks);
   const storeGridBlocks = useEditorStore((s) => s.gridBlocks);
   const storeSections = useEditorStore((s) => s.pageConfig.sections);
+  const isLayoutEditing = useEditorStore((s) => s.isLayoutEditing);
 
   const blocksRef = useRef<PavingBlock[]>(blocks);
   blocksRef.current = blocks;
@@ -131,6 +133,9 @@ export function PavingCanvas() {
               id: gb.sectionId,
               color: libItem?.color || '#3b82f6',
               displayMode: 'LOCKED' as DisplayMode,
+              requestedWidth: (section?.content as any)?.requestedWidth || 0,
+              requestedHeight: (section?.content as any)?.requestedHeight || 0,
+              style: section?.style || {},
             },
           };
         }
@@ -138,7 +143,7 @@ export function PavingCanvas() {
           changed = true;
           return {
             ...b,
-            section: { ...b.section, id: 'S0', color: '#1e293b', type: 'ADAPTIVE' as SectionType, displayMode: 'UNLOCKED' as DisplayMode },
+            section: { ...b.section, id: 'S0', color: '#1e293b', type: 'ADAPTIVE' as SectionType, displayMode: 'UNLOCKED' as DisplayMode, style: {} },
           };
         }
         return b;
@@ -153,24 +158,30 @@ export function PavingCanvas() {
       const storeIds = new Set(storeGridBlocks.map(gb => gb.id));
       const anyMatch = [...storeIds].some(id => localBlockIdsRef.current.has(id));
       if (!anyMatch && localBlockIdsRef.current.size > 0) {
-        setBlocks(storeGridBlocks.map(gb => ({
-          id: gb.id,
-          x: gb.bounds.left,
-          y: gb.bounds.top,
-          w: gb.bounds.right - gb.bounds.left,
-          h: gb.bounds.bottom - gb.bounds.top,
-          section: {
-            id: gb.sectionId || 'S0',
-            color: '#1e293b',
-            type: 'ADAPTIVE' as SectionType,
-            requestedWidth: 200,
-            requestedHeight: 150,
-            displayMode: (gb.sectionId ? 'LOCKED' : 'UNLOCKED') as DisplayMode,
-          },
-        })));
+        setBlocks(storeGridBlocks.map(gb => {
+          const section = gb.sectionId ? storeSections.find(s => s.id === gb.sectionId) : null;
+          const sectionType: SectionType = section ? section.type : 'ADAPTIVE';
+          const libItem = section ? SECTION_LIBRARY.find(item => item.type === sectionType) : null;
+          return {
+            id: gb.id,
+            x: gb.bounds.left,
+            y: gb.bounds.top,
+            w: gb.bounds.right - gb.bounds.left,
+            h: gb.bounds.bottom - gb.bounds.top,
+            section: {
+              id: gb.sectionId || 'S0',
+              color: section ? libItem?.color || '#3b82f6' : '#1e293b',
+              type: sectionType,
+              requestedWidth: section ? (section.content as any)?.requestedWidth || 0 : 0,
+              requestedHeight: section ? (section.content as any)?.requestedHeight || 0 : 0,
+              displayMode: (gb.sectionId ? 'LOCKED' : 'UNLOCKED') as DisplayMode,
+              style: section?.style || {},
+            },
+          };
+        }));
       }
     }
-  }, [storeGridBlocks]);
+  }, [storeGridBlocks, storeSections]);
 
   const getSectionName = (block: PavingBlock): string | null => {
     const gb = storeGridBlocks.find(g => g.id === block.id);
@@ -272,7 +283,7 @@ export function PavingCanvas() {
     const updated = [...blocks];
     updated[idx] = { ...target, h: halfH };
     updated.splice(idx + 1, 0, newBlock);
-    setBlocks(refreshLayoutPositions(updated));
+    setBlocks(updated);
   };
 
   // --- Merge two selected blocks ---
@@ -500,6 +511,9 @@ export function PavingCanvas() {
                                 width: block.section.requestedWidth,
                                 height: block.section.requestedHeight,
                                 backgroundColor: block.section.color,
+                                backgroundImage: block.section.style?.backgroundImage || undefined,
+                                backgroundSize: block.section.style?.backgroundImage ? 'cover' : undefined,
+                                backgroundPosition: block.section.style?.backgroundImage ? 'center' : undefined,
                                 borderRadius: '4px',
                                 flexShrink: 0,
                               }
@@ -531,7 +545,8 @@ export function PavingCanvas() {
           </div>
         </div>
 
-        {/* Small right sidebar with undo/redo/merge */}
+        {/* Small right sidebar with undo/redo/merge - only show when editing layout */}
+        {isLayoutEditing && (
         <div className="paving-toolbar-sidebar">
           <div className="paving-toolbar-group">
             <button
@@ -560,6 +575,7 @@ export function PavingCanvas() {
             <Merge size={18} />
           </button>
         </div>
+        )}
       </div>
     </div>
   );

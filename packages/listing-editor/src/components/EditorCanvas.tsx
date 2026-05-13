@@ -8,12 +8,18 @@ export function EditorCanvas() {
   const getTheme = useEditorStore((s) => s.getTheme);
   const viewMode = useEditorStore((s) => s.viewMode);
   const setContainerDimensions = useEditorStore((s) => s.setContainerDimensions);
+  const isLayoutEditing = useEditorStore((s) => s.isLayoutEditing);
+  const showBlocksInsteadOfSections = useEditorStore((s) => s.showBlocksInsteadOfSections);
+  const gridBlocks = useEditorStore((s) => s.gridBlocks);
+  const setSelectedBlock = useEditorStore((s) => s.setSelectedBlock);
+  const selectedBlockId = useEditorStore((s) => s.selectedBlockId);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const theme = getTheme();
 
   const sortedSections = [...pageConfig.sections].sort((a, b) => a.order - b.order);
   const isCustom = pageConfig.layout === 'custom';
+  console.log('[EditorCanvas] Rendering. layout:', pageConfig.layout, 'isCustom:', isCustom, 'sections:', sortedSections.length, 'gridBlocks:', gridBlocks.length);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -86,9 +92,65 @@ export function EditorCanvas() {
   };
 
   if (isCustom) {
+    // When editing the layout (isLayoutEditing), show the block editor
+    // When showBlocksInsteadOfSections is set (saved layout with blocks), show blocks
+    if (isLayoutEditing || showBlocksInsteadOfSections) {
+      return (
+        <div ref={canvasRef} className={`editor-canvas view-${viewMode}`} style={cssVars as React.CSSProperties}>
+          <PavingCanvas />
+        </div>
+      );
+    }
+    
+    // Render saved custom layout using gridBlocks positions
     return (
       <div ref={canvasRef} className={`editor-canvas view-${viewMode}`} style={cssVars as React.CSSProperties}>
-        <PavingCanvas />
+        <div className="editor-canvas-inner" style={{ position: 'relative', width: '100%' }}>
+          {gridBlocks.length === 0 ? (
+            <div style={{ padding: '48px', textAlign: 'center', color: '#94a3b8' }}>
+              <div style={{ fontSize: '32px', marginBottom: '16px' }}>📄</div>
+              <div style={{ fontSize: '16px', marginBottom: '8px' }}>No blocks in this layout</div>
+            </div>
+          ) : (
+            <>
+              {gridBlocks.map((block) => {
+                const assignedSection = block.sectionId 
+                  ? sortedSections.find(s => s.id === block.sectionId) 
+                  : null;
+                const height = block.bounds.bottom - block.bounds.top;
+                const width = block.bounds.right - block.bounds.left;
+                const top = block.bounds.top;
+                const left = block.bounds.left;
+                return (
+                  <div 
+                    key={block.id} 
+                    style={{ 
+                      position: 'absolute',
+                      top: `${top}px`,
+                      left: `${left}px`,
+                      width: `${width}px`,
+                      height: `${height}px`,
+                      cursor: 'pointer', 
+                      border: selectedBlockId === block.id ? '2px solid #3b82f6' : '2px solid transparent',
+                      boxSizing: 'border-box',
+                      overflow: 'hidden',
+                    }}
+                    onClickCapture={() => setSelectedBlock(block.id)}
+                  >
+                    {assignedSection ? (
+                      <SectionRenderer section={assignedSection} style={{ width: '100%', height: '100%' }} theme={theme} blockId={block.id} />
+                    ) : (
+                      <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', width: '100%', height: '100%' }}>
+                        Empty block - assign a section from sidebar
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <div style={{ height: `${Math.max(...gridBlocks.map(b => b.bounds.bottom))}px` }} />
+            </>
+          )}
+        </div>
       </div>
     );
   }
@@ -104,11 +166,27 @@ export function EditorCanvas() {
           </div>
         ) : (
           <>
-            {sortedSections.map((section, index) => 
-              <div key={section.id} style={{ flex: 'none', minHeight: '100px' }}>
-                <SectionRenderer key={section.id} section={section} style={getSectionStyle(section, index)} theme={theme} />
-              </div>
-            )}
+            {gridBlocks.map((block, index) => {
+              // Find the section assigned to this block
+              const assignedSection = block.sectionId 
+                ? sortedSections.find(s => s.id === block.sectionId) 
+                : null;
+              return (
+                <div 
+                  key={block.id} 
+                  style={{ flex: 'none', minHeight: '100px', cursor: 'pointer', border: selectedBlockId === block.id ? '2px solid #3b82f6' : '2px solid transparent' }}
+                  onClickCapture={() => { console.log('[EditorCanvas] Click CAPTURE on block:', block.id, 'section:', assignedSection?.id); setSelectedBlock(block.id); }}
+                >
+                  {assignedSection ? (
+                    <SectionRenderer section={assignedSection} style={getSectionStyle(assignedSection, index)} theme={theme} blockId={block.id} />
+                  ) : (
+                    <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', minHeight: '100px' }}>
+                      Empty block - assign a section from sidebar
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             <div style={{ height: '48px', flexShrink: 0 }} />
           </>
         )}

@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import type { PropertyData, PropertyPhoto, PageConfig, Section, SectionType, Theme, Layout, GridBlock } from '../types';
 import type { SplitDirection, SavedLayout } from '../types/blocks';
-import { THEMES, LAYOUTS, DEFAULT_SECTION_CONTENT, generateId, MAX_CUSTOM_LAYOUTS, CUSTOM_LAYOUT_STORAGE_KEY, DEFAULT_SECTION_TYPES } from '../lib/constants';
+import { THEMES, LAYOUTS, DEFAULT_SECTION_CONTENT, generateId, DEFAULT_SECTION_TYPES } from '../lib/constants';
 import * as supabase from '../services/supabase';
+import type { ListingLayout } from '../services/supabase';
 import {
   initializeGridState,
   applyDragToBlocks,
@@ -46,9 +47,14 @@ interface EditorState {
   error: string | null;
   viewMode: ViewMode;
   edgeDragState: EdgeDragState;
+  isLayoutEditing: boolean;
+  showBlocksInsteadOfSections: boolean;
+  selectedCustomLayoutId: string | null;
+  availableLayouts: ListingLayout[];
 
   loadProperty: (propertyId: string) => Promise<void>;
   saveConfig: () => Promise<void>;
+  loadLayouts: () => Promise<void>;
 
   toggleSidebar: () => void;
   setSelectedSection: (sectionId: string | null) => void;
@@ -84,13 +90,14 @@ interface EditorState {
   redoBlocks: () => void;
   setToastMessage: (msg: string | null) => void;
 
-  saveCustomLayout: (name: string) => boolean;
+  saveCustomLayout: (name: string) => Promise<boolean>;
   loadCustomLayout: (id: string) => void;
   deleteCustomLayout: (id: string) => void;
   getCustomLayouts: () => SavedLayout[];
 
   getTheme: () => Theme | undefined;
   getLayout: () => Layout | undefined;
+  getIsLayoutEditing: () => boolean;
 }
 
 const DEFAULT_PAGE_CONFIG: PageConfig = {
@@ -110,6 +117,95 @@ function createDefaultSections(): Section[] {
     style: {},
     animations: {},
   }));
+}
+
+function createSectionsFromProperty(propertyData: PropertyData, photos: PropertyPhoto[]): Section[] {
+  const sections: Section[] = [];
+
+  // Hero section
+  sections.push({
+    id: generateId(),
+    type: 'hero',
+    order: 0,
+    enabled: true,
+    content: {
+      title: propertyData.listing_title || propertyData.name || '',
+      subtitle: propertyData.property_type || '',
+      description: propertyData.listing_description || '',
+      backgroundImage: photos.length > 0 ? photos[0].url : (propertyData.cover_image_url || ''),
+      ctaText: 'Book Now',
+      ctaLink: '',
+    },
+    style: {
+      backgroundImage: photos.length > 0 ? `url(${photos[0].url})` : (propertyData.cover_image_url ? `url(${propertyData.cover_image_url})` : undefined),
+    },
+    animations: {},
+  });
+
+  // Description section
+  sections.push({
+    id: generateId(),
+    type: 'description',
+    order: 1,
+    enabled: true,
+    content: {
+      content: propertyData.listing_description || '',
+    },
+    style: {},
+    animations: {},
+  });
+
+  // Characteristics section
+  sections.push({
+    id: generateId(),
+    type: 'characteristics',
+    order: 2,
+    enabled: true,
+    content: {
+      sqm: propertyData.surface_area || 0,
+      plotSqm: 0,
+      rooms: propertyData.rooms || 0,
+      bathrooms: propertyData.bathrooms || 0,
+      beds: propertyData.bed_count || 0,
+      guests: propertyData.max_guests || 0,
+    },
+    style: {},
+    animations: {},
+  });
+
+  // Photos section
+  if (photos.length > 0) {
+    sections.push({
+      id: generateId(),
+      type: 'photos',
+      order: sections.length,
+      enabled: true,
+      content: {
+        images: photos.map(p => ({ url: p.url, caption: '' })),
+        layout: 'grid',
+        columns: 3,
+      },
+      style: {},
+      animations: {},
+    });
+  }
+
+  // Contact section
+  sections.push({
+    id: generateId(),
+    type: 'contact',
+    order: sections.length,
+    enabled: true,
+    content: {
+      email: propertyData.cleaning_contact_info || '',
+      phone: propertyData.emergency_contact_info || '',
+      address: propertyData.address || '',
+    },
+    style: {},
+    animations: {},
+  });
+
+  return sections;
 }
 
 const DEFAULT_GRID_BLOCKS: GridBlock[] = [];
@@ -134,29 +230,64 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   error: null,
   viewMode: 'desktop',
   edgeDragState: { active: false, orientation: 'H', coordinate: 0, affectedA: [], affectedB: [] },
+  isLayoutEditing: false,
+  showBlocksInsteadOfSections: false,
+  selectedCustomLayoutId: null,
+  availableLayouts: [],
 
   loadProperty: async (propertyId: string) => {
     set({ isLoading: true, error: null });
     try {
+      console.log('[loadProperty] Loading property:', propertyId);
       const [propertyData, photos] = await Promise.all([
         supabase.fetchProperty(propertyId),
         supabase.fetchPropertyPhotos(propertyId),
       ]);
 
+      console.log('[loadProperty] Property data:', propertyData);
+      console.log('[loadProperty] Photos:', photos);
+
       if (!propertyData) {
         throw new Error('Property not found');
       }
 
-      const pageConfig = propertyData.page_config || DEFAULT_PAGE_CONFIG;
+      let pageConfig = propertyData.page_config || DEFAULT_PAGE_CONFIG;
+      console.log('[loadProperty] Initial pageConfig sections:', pageConfig.sections?.length);
+
+      // If no sections exist, create them from property data
+      if (!pageConfig.sections || pageConfig.sections.length === 0) {
+        const newSections = createSectionsFromProperty(propertyData, photos);
+        console.log('[loadProperty] Created sections from property:', newSections.length);
+        pageConfig = {
+          ...pageConfig,
+          sections: newSections,
+        };
+      }
+
+      // Create gridBlocks from sections (each section is a block)
+      const gridBlocks = pageConfig.sections.map((section, index) => ({
+        id: `block_${index}`,
+        sectionId: section.id,
+        row: 0,
+        col: 0,
+        bounds: { top: index * 150, left: 0, right: 800, bottom: (index + 1) * 150 },
+        displayMode: 'LOCKED' as const,
+      }));
 
       set({
         propertyId,
         propertyData,
         photos,
         pageConfig,
+        gridBlocks,
         isLoading: false,
       });
+      console.log('[loadProperty] Done, sections in store:', pageConfig.sections?.length);
+
+      // Load available layouts from DB after property is loaded
+      get().loadLayouts();
     } catch (error) {
+      console.error('[loadProperty] Error:', error);
       set({ isLoading: false, error: (error as Error).message });
       throw error;
     }
@@ -176,11 +307,25 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
   },
 
+  loadLayouts: async () => {
+    const { propertyData } = get();
+    const ownerId = propertyData?.owner_id;
+    const layouts = await supabase.fetchListingLayouts(ownerId);
+    console.log('[loadLayouts] Loaded', layouts.length, 'layouts from DB');
+    set({ availableLayouts: layouts });
+  },
+
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   setSelectedSection: (sectionId) => set({ selectedSectionId: sectionId }),
-  setSelectedBlock: (blockId) => set({
-    selectedBlockId: blockId,
-    selectedBlockIds: blockId ? [blockId] : [],
+  setSelectedBlock: (blockId) => set((state) => {
+    const block = blockId ? state.gridBlocks.find(b => b.id === blockId) : null;
+    const assignedSectionId = block?.sectionId || null;
+    
+    return {
+      selectedBlockId: blockId,
+      selectedBlockIds: blockId ? [blockId] : [],
+      selectedSectionId: assignedSectionId,
+    };
   }),
   toggleBlockSelection: (blockId) => set((state) => {
     const ids = state.selectedBlockIds;
@@ -196,6 +341,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setViewMode: (mode) => set({ viewMode: mode }),
 
   setLayout: (layoutId) => {
+    console.log('[setLayout] layoutId:', layoutId);
     if (layoutId === 'custom') {
       set((state) => {
         let sections = state.pageConfig.sections;
@@ -209,38 +355,67 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         return {
           pageConfig: { ...state.pageConfig, layout: layoutId, sections },
           gridBlocks,
+          isLayoutEditing: true,
+          showBlocksInsteadOfSections: false,
         };
       });
     } else {
-      // Check if it's a saved custom layout
-      try {
-        const stored = localStorage.getItem('custom_layouts');
-        const layouts: any[] = stored ? JSON.parse(stored) : [];
-        const savedLayout = layouts.find(l => l.id === layoutId);
-        
-        if (savedLayout) {
-          // Load the saved custom layout
-          set((state) => ({
-            pageConfig: { ...state.pageConfig, layout: 'custom' },
-            gridBlocks: savedLayout.gridBlocks || [],
+      // Find layout in DB-loaded availableLayouts
+      const dbLayout = get().availableLayouts.find(l => l.id === layoutId);
+      
+      if (dbLayout) {
+        console.log('[setLayout] Found DB layout:', dbLayout.name, 'type:', dbLayout.type);
+        console.log('[setLayout] gridBlocks count:', (dbLayout.grid_blocks as any[])?.length);
+
+        set((state) => {
+          const gridBlocks = (dbLayout.grid_blocks as GridBlock[]) || [];
+          const finalSections = state.pageConfig.sections;
+          
+          // Apply section assignments from DB layout (predefined layouts have them, custom don't)
+          const assignedBlocks = gridBlocks.map(block => {
+            const sectionId = (dbLayout.section_assignments as Record<string, string>)?.[block.id] || block.sectionId;
+            return sectionId ? { ...block, sectionId } : block;
+          });
+
+          return {
+            pageConfig: { ...state.pageConfig, layout: 'custom', sections: finalSections },
+            gridBlocks: assignedBlocks,
             selectedBlockId: null,
             selectedBlockIds: [],
             selectedSeparatorId: null,
-          }));
-          return;
-        }
-      } catch (e) {
-        console.error('Failed to load custom layout:', e);
+            isLayoutEditing: false,
+            showBlocksInsteadOfSections: false,
+            selectedCustomLayoutId: dbLayout.id,
+          };
+        });
+        return;
       }
       
-      // Standard predefined layout
-      set((state) => ({
-        pageConfig: { ...state.pageConfig, layout: layoutId },
-        gridBlocks: [],
-        selectedBlockId: null,
-        selectedBlockIds: [],
-        selectedSeparatorId: null,
-      }));
+      // Fallback: hardcoded predefined layout from LAYOUTS constant
+      const hardcodedLayout = LAYOUTS.find(l => l.id === layoutId);
+      if (hardcodedLayout) {
+        set((state) => {
+          const sections = state.pageConfig.sections;
+          const gridBlocks = sections.map((section, index) => ({
+            id: `block_${index}`,
+            sectionId: section.id,
+            row: 0,
+            col: 0,
+            bounds: { top: index * 150, left: 0, right: 800, bottom: (index + 1) * 150 },
+            displayMode: 'LOCKED' as const,
+          }));
+          
+          return {
+            pageConfig: { ...state.pageConfig, layout: layoutId },
+            gridBlocks,
+            selectedBlockId: null,
+            selectedBlockIds: [],
+            selectedSeparatorId: null,
+            isLayoutEditing: false,
+            showBlocksInsteadOfSections: false,
+          };
+        });
+      }
     }
   },
 
@@ -462,94 +637,63 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
   },
 
-  saveCustomLayout: (name) => {
-    const { gridBlocks } = get();
+  saveCustomLayout: async (name) => {
+    const { gridBlocks, propertyData } = get();
+    console.log('[saveCustomLayout] Saving gridBlocks count:', gridBlocks.length);
+    console.log('[saveCustomLayout] gridBlocks sample:', JSON.stringify(gridBlocks.slice(0, 2)));
     if (gridBlocks.length === 0) return false;
 
-    try {
-      const stored = localStorage.getItem(CUSTOM_LAYOUT_STORAGE_KEY);
-      const layouts: SavedLayout[] = stored ? JSON.parse(stored) : [];
+    const layoutId = `layout_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const saved = await supabase.saveListingLayout({
+      id: layoutId,
+      name,
+      type: 'custom',
+      grid_blocks: gridBlocks as unknown[],
+      section_assignments: {},
+      owner_id: propertyData?.owner_id || '',
+    });
 
-      if (layouts.length >= MAX_CUSTOM_LAYOUTS) {
-        return false;
-      }
-
-      const existingIndex = layouts.findIndex(l => l.name === name);
-      const now = Date.now();
-      const newLayout: SavedLayout = {
-        id: existingIndex >= 0 ? layouts[existingIndex].id : `layout_${now}_${Math.random().toString(36).substr(2, 9)}`,
-        name,
-        gridBlocks,
-        createdAt: existingIndex >= 0 ? layouts[existingIndex].createdAt : now,
-        updatedAt: now,
-      };
-
-      if (existingIndex >= 0) {
-        layouts[existingIndex] = newLayout;
-      } else {
-        layouts.push(newLayout);
-      }
-
-      localStorage.setItem(CUSTOM_LAYOUT_STORAGE_KEY, JSON.stringify(layouts));
+    if (saved) {
+      console.log('[saveCustomLayout] Saved to DB:', saved.id);
+      // Refresh layouts list
+      await get().loadLayouts();
       return true;
-    } catch (e) {
-      console.error('Failed to save custom layout:', e);
-      return false;
     }
+    return false;
   },
 
   loadCustomLayout: (id) => {
-    try {
-      const stored = localStorage.getItem(CUSTOM_LAYOUT_STORAGE_KEY);
-      const layouts: SavedLayout[] = stored ? JSON.parse(stored) : [];
-      const layout = layouts.find(l => l.id === id);
-
-      if (!layout) return;
-
-      set((state) => ({
-        pageConfig: {
-          ...state.pageConfig,
-          layout: 'custom',
-        },
-        gridBlocks: (layout as any).gridBlocks || [],
-      }));
-    } catch (e) {
-      console.error('Failed to load custom layout:', e);
-    }
+    // Now handled by setLayout which uses availableLayouts from DB
+    get().setLayout(id);
   },
 
-  deleteCustomLayout: (id) => {
-    try {
-      const stored = localStorage.getItem(CUSTOM_LAYOUT_STORAGE_KEY);
-      const layouts: SavedLayout[] = stored ? JSON.parse(stored) : [];
-      const newLayouts = layouts.filter(l => l.id !== id);
-      localStorage.setItem(CUSTOM_LAYOUT_STORAGE_KEY, JSON.stringify(newLayouts));
+  deleteCustomLayout: async (id) => {
+    const success = await supabase.deleteListingLayout(id);
+    if (success) {
+      console.log('[deleteCustomLayout] Deleted from DB:', id);
+      // Refresh layouts list
+      await get().loadLayouts();
 
       const state = get();
-      if (state.gridBlocks.length > 0) {
-        set((s) => ({
+      if (state.selectedCustomLayoutId === id) {
+        set({
           pageConfig: {
-            ...s.pageConfig,
+            ...state.pageConfig,
             layout: 'list',
           },
           gridBlocks: [],
           selectedBlockId: null,
           selectedBlockIds: [],
           selectedSeparatorId: null,
-        }));
+          selectedCustomLayoutId: null,
+        });
       }
-    } catch (e) {
-      console.error('Failed to delete custom layout:', e);
     }
   },
 
   getCustomLayouts: () => {
-    try {
-      const stored = localStorage.getItem(CUSTOM_LAYOUT_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch (e) {
-      console.error('Failed to get custom layouts:', e);
-      return [];
-    }
+    return get().availableLayouts as unknown as SavedLayout[];
   },
+
+  getIsLayoutEditing: () => get().isLayoutEditing,
 }));
